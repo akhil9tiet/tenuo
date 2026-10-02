@@ -56,8 +56,34 @@ npm run typecheck
 
 ## Where the Tenuo session is supplied
 
-The wrapped `execute` keeps the SDK's `(args, options)` signature. Supply the
-session in the options object:
+In a real agent loop, wrap the `generateText`/`streamText` call in
+`tenuo.withSession()` — the AI SDK builds the `execute` options object
+itself (`toolCallId`, `messages`, `abortSignal`, …), so callers can't add
+`session` to it:
+
+```ts
+const result = await tenuo.withSession(reportsSession, () =>
+  streamText({
+    model,
+    tools: { readFile: protectedReadFile },
+    prompt: "Read /data/reports/q3.pdf",
+  }),
+);
+```
+
+Tenuo reads the session from ambient `AsyncLocalStorage` context, authorizes
+each tool call against it, and forwards the SDK's own options to the original
+`execute` untouched. This holds even though the tools run while the stream is
+being read, after the `withSession` callback has returned — the session
+survives stream consumption (covered by the `streamText` agent-loop test).
+
+Calling `execute` with no session at all throws `TenuoConfigurationError`
+("No session…") instead of running the operation.
+
+### Direct-call / testing path
+
+When you invoke the tool yourself — in tests, scripts, or the demo — pass
+the session explicitly in the options object:
 
 ```ts
 await protectedReadFile.execute(
@@ -66,15 +92,9 @@ await protectedReadFile.execute(
 );
 ```
 
-Tenuo reads `session` from the options — or from `tenuo.withSession()`
-ambient context when the options omit it — authorizes the call, strips its
-own keys, and forwards anything else to the original `execute`. In a real
-agent loop the SDK calls `execute(input, options)` with its own
-`toolCallId`/`messages`/`abortSignal`; those flow through untouched, and the
-only thing you add is `session`.
-
-Calling `execute` with no session at all throws `TenuoConfigurationError`
-("No session…") instead of running the operation.
+Tenuo reads `session` from the options (or from `tenuo.withSession()`
+ambient context when the options omit it), strips its own keys, and forwards
+anything else to the original `execute`.
 
 One typing note: `tenuo.tool` accepts tools whose `execute` takes just
 `(args)` — the SDK always invokes `execute(input, options)`, so a
