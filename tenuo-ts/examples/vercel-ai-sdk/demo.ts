@@ -5,10 +5,11 @@
  * the transcript. No model, API key, or network: the tool is executed
  * directly, the way the SDK would invoke it after a model emits a tool call.
  *
- * The dev root mints warrants without key material and refuses production;
- * this entry point opts in explicitly for the local run.
+ * The dev root mints warrants without key material and refuses production.
+ * It reads TENUO_ALLOW_DEV when `createTenuo.devRoot()` is called, so setting
+ * it here, before `runDemo()`, opts this local run in.
  */
-process.env.TENUO_ALLOW_DEV ??= "1";
+import { runDemo } from "./protected-tool.ts";
 
-const { runDemo } = await import("./protected-tool.ts");
+process.env.TENUO_ALLOW_DEV ??= "1";
 await runDemo();

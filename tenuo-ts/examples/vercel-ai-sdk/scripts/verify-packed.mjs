@@ -73,7 +73,7 @@ function runNpm(args, cwd) {
 function run(command, args, cwd) {
   const result = spawnSync(command, args, {
     cwd,
-    env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+    env: process.env,
     stdio: "inherit",
   });
   if (result.status !== 0) {
@@ -104,6 +104,11 @@ function packPackage(cwd, destination) {
 
 function assertPackedInstall(root) {
   const packageDir = join(root, "node_modules", "@tenuo", "core");
+  assert.equal(
+    existsSync(packageDir),
+    true,
+    "npm install did not produce node_modules/@tenuo/core",
+  );
   assert.equal(
     lstatSync(packageDir).isSymbolicLink(),
     false,
