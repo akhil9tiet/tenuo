@@ -17,10 +17,12 @@
  * - No Vercel AI SDK concept enters `@tenuo/core`; the wrapped tool is still
  *   a valid AI SDK tool you could pass to `generateText({ tools })`.
  *
- * Where the Tenuo session is supplied: the wrapped `execute` takes the same
- * `(args, options)` pair as any AI SDK tool. Pass `{ session }` in the
- * options — Tenuo reads it there (or from `tenuo.withSession()` ambient
- * context), strips its own keys, and forwards the rest (`toolCallId`,
+ * Where the Tenuo session is supplied: in a real agent loop, wrap the
+ * `generateText`/`streamText` call in `tenuo.withSession(session, …)` — the
+ * SDK builds the `execute` options object itself, so callers can't add
+ * `session` to it. Tenuo reads the session from ambient context (or from
+ * `{ session }` in the options when you call `execute` directly, e.g. in
+ * tests), strips its own keys, and forwards the rest (`toolCallId`,
  * `messages`, `abortSignal`, …) to the original `execute` untouched.
  *
  * No LLM call, API key, or network is involved: the tool is executed
@@ -114,9 +116,10 @@ export type DemoLog = (line: string) => void;
 export async function runDemo(log: DemoLog = console.log): Promise<void> {
   const { protectedReadFile, reportsSession, executed } = createHarness();
 
-  // Where the Tenuo session is supplied: the `execute` options. Tenuo reads
-  // `session` here (or from `tenuo.withSession()` ambient context), strips
-  // its own keys, and forwards anything else to the original `execute`.
+  // Where the Tenuo session is supplied on the direct-call path: the
+  // `execute` options. (In a real agent loop you'd wrap the
+  // `generateText`/`streamText` call in `tenuo.withSession()` instead —
+  // see the README.)
   const options = { session: reportsSession };
 
   const allowed = await protectedReadFile.execute({ path: "/data/reports/q3.pdf" }, options);
